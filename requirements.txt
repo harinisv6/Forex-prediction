@@ -1,7 +1,6 @@
 streamlit
 pandas
 plotly
-MetaTrader5
 ta
 joblib
 scikit-learn
