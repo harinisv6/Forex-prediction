@@ -1,7 +1,8 @@
+streamlit
 pandas
-numpy
+plotly
+MetaTrader5
+ta
+joblib
 scikit-learn
-xgboost
-torch
-pytorch-lightning
-pytorch-forecasting
+streamlit-autorefresh
