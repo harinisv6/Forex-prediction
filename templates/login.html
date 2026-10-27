@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ForexAI — Sign In</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg:          #080b10;
+      --surface:     #0e1318;
+      --surface2:    #141b22;
+      --border:      rgba(255,255,255,0.07);
+      --border-glow: rgba(0,229,255,0.25);
+      --cyan:        #00e5ff;
+      --cyan-dim:    rgba(0,229,255,0.12);
+      --green:       #26a69a;
+      --red:         #ef5350;
+      --text:        #e8edf2;
+      --muted:       #5a6a7a;
+      --google-bg:   #ffffff;
+      --google-text: #1f1f1f;
+      --radius:      14px;
+      --font-display: 'Syne', sans-serif;
+      --font-mono:    'DM Mono', monospace;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-display);
+      overflow: hidden;
+    }
+
+    #bg-canvas {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+      opacity: 0.4;
+      pointer-events: none;
+    }
+
+    .page {
+      position: relative;
+      z-index: 2;
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 1fr 480px 1fr;
+      grid-template-rows: 1fr;
+      align-items: center;
+    }
+
+    .left-panel {
+      grid-column: 1;
+      padding: 3rem 2rem 3rem 4rem;
+      display: flex;
+      flex-direction: column;
+      gap: 2.5rem;
+      opacity: 0;
+      transform: translateX(-30px);
+      animation: slideIn 0.9s cubic-bezier(0.16,1,0.3,1) 0.2s forwards;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-icon {
+      width: 44px;
+      height: 44px;
+      background: var(--cyan-dim);
+      border: 1px solid var(--border-glow);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+
+    .logo-text {
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      color: var(--text);
+    }
+
+    .logo-text span { color: var(--cyan); }
+
+    .brand-headline {
+      font-size: clamp(2rem, 3.5vw, 3.2rem);
+      font-weight: 800;
+      line-height: 1.1;
+      letter-spacing: -1.5px;
+    }
+
+    .brand-headline .accent { color: var(--cyan); }
+
+    .brand-sub {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.7;
+      max-width: 320px;
+    }
+
+    .ticker-strip {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .ticker-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 10px 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      transition: border-color 0.3s;
+    }
+
+    .ticker-row:hover { border-color: var(--border-glow); }
+
+    .ticker-pair {
+      font-weight: 500;
+      color: var(--text);
+      width: 72px;
+    }
+
+    .ticker-price {
+      flex: 1;
+      color: var(--muted);
+    }
+
+    .ticker-change {
+      font-weight: 500;
+      padding: 2px 8px;
+      border-radius: 5px;
+      font-size: 12px;
+    }
+
+    .ticker-change.up   { color: var(--green); background: rgba(38,166,154,0.12); }
+    .ticker-change.down { color: var(--red);   background: rgba(239,83,80,0.12); }
+
+    .ticker-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    .ticker-dot.up   { background: var(--green); }
+    .ticker-dot.down { background: var(--red); }
+
+    .card {
+      grid-column: 2;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 48px 40px;
+      position: relative;
+      overflow: hidden;
+      opacity: 0;
+      transform: translateY(24px);
+      animation: riseUp 0.9s cubic-bezier(0.16,1,0.3,1) 0.35s forwards;
+      box-shadow:
+        0 0 0 1px rgba(0,229,255,0.04),
+        0 40px 80px rgba(0,0,0,0.6),
+        0 0 60px rgba(0,229,255,0.04);
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 10%; right: 10%;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+      opacity: 0.5;
+    }
+
+    .card-tag {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--cyan);
+      margin-bottom: 28px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card-tag::before {
+      content: '';
+      display: inline-block;
+      width: 18px; height: 1px;
+      background: var(--cyan);
+    }
+
+    .card-title {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -0.8px;
+      margin-bottom: 6px;
+    }
+
+    .card-subtitle {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 36px;
+    }
+
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin: 28px 0;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+    }
+
+    .divider::before, .divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .btn-google {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 15px 20px;
+      background: var(--google-bg);
+      color: var(--google-text);
+      border: none;
+      border-radius: var(--radius);
+      font-family: var(--font-display);
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      position: relative;
+      overflow: hidden;
+      letter-spacing: -0.2px;
+    }
+
+    .btn-google::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0);
+      transition: background 0.2s;
+    }
+
+    .btn-google:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+    }
+
+    .btn-google:hover::after { background: rgba(0,0,0,0.06); }
+    .btn-google:active { transform: translateY(0); }
+
+    .btn-google .spinner {
+      display: none;
+      width: 18px; height: 18px;
+      border: 2px solid rgba(0,0,0,0.15);
+      border-top-color: #4285f4;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+
+    .btn-google.loading .google-icon { display: none; }
+    .btn-google.loading .spinner { display: block; }
+    .btn-google.loading { pointer-events: none; opacity: 0.85; }
+
+    .google-icon { flex-shrink: 0; }
+
+    .field-group {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      margin-bottom: 4px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .field label {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .field-wrap {
+      position: relative;
+    }
+
+    .field-wrap .field-icon {
+      position: absolute;
+      left: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+      font-size: 15px;
+      pointer-events: none;
+      transition: color 0.2s;
+    }
+
+    .field input {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px 14px 44px;
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .field input::placeholder { color: var(--muted); }
+
+    .field input:focus {
+      border-color: var(--border-glow);
+      box-shadow: 0 0 0 3px rgba(0,229,255,0.08);
+    }
+
+    .field input:focus + .field-icon,
+    .field-wrap:focus-within .field-icon {
+      color: var(--cyan);
+    }
+
+    .field-toggle {
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 15px;
+      padding: 4px;
+      transition: color 0.2s;
+    }
+    .field-toggle:hover { color: var(--text); }
+
+    .form-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 16px 0 20px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+    }
+
+    .remember {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      color: var(--muted);
+    }
+
+    .remember input[type="checkbox"] {
+      accent-color: var(--cyan);
+      width: 14px; height: 14px;
+      cursor: pointer;
+    }
+
+    .forgot {
+      color: var(--cyan);
+      text-decoration: none;
+      transition: opacity 0.2s;
+    }
+    .forgot:hover { opacity: 0.7; }
+
+    .btn-submit {
+      width: 100%;
+      padding: 15px;
+      background: var(--cyan);
+      color: #020a0d;
+      border: none;
+      border-radius: var(--radius);
+      font-family: var(--font-display);
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: -0.2px;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn-submit::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.15), transparent);
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .btn-submit:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(0,229,255,0.3);
+    }
+
+    .btn-submit:hover::before { opacity: 1; }
+    .btn-submit:active { transform: translateY(0); }
+
+    .error-msg {
+      display: none;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--red);
+      background: rgba(239,83,80,0.1);
+      border: 1px solid rgba(239,83,80,0.2);
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-top: 14px;
+    }
+
+    .error-msg.show { display: block; }
+
+    .success-overlay {
+      position: absolute;
+      inset: 0;
+      background: var(--surface);
+      border-radius: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.4s;
+      z-index: 10;
+    }
+
+    .success-overlay.show {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .success-icon {
+      width: 60px; height: 60px;
+      background: rgba(38,166,154,0.15);
+      border: 1px solid var(--green);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+      animation: popIn 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards;
+    }
+
+    .success-text {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--green);
+    }
+
+    .success-sub {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .signup-row {
+      text-align: center;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 24px;
+    }
+
+    .signup-row a {
+      color: var(--cyan);
+      text-decoration: none;
+      font-weight: 500;
+      transition: opacity 0.2s;
+    }
+    .signup-row a:hover { opacity: 0.7; }
+
+    .right-panel {
+      grid-column: 3;
+      padding: 3rem 4rem 3rem 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      align-items: flex-end;
+      opacity: 0;
+      transform: translateX(30px);
+      animation: slideInRight 0.9s cubic-bezier(0.16,1,0.3,1) 0.5s forwards;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px 22px;
+      width: 220px;
+      transition: border-color 0.3s, transform 0.3s;
+    }
+
+    .stat-card:hover {
+      border-color: var(--border-glow);
+      transform: translateX(-4px);
+    }
+
+    .stat-label {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .stat-value {
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+
+    .stat-value.up   { color: var(--green); }
+    .stat-value.down { color: var(--red); }
+    .stat-value.neutral { color: var(--cyan); }
+
+    .stat-sub {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    @keyframes slideIn       { to { opacity:1; transform:translateX(0); } }
+    @keyframes slideInRight  { to { opacity:1; transform:translateX(0); } }
+    @keyframes riseUp        { to { opacity:1; transform:translateY(0); } }
+    @keyframes spin          { to { transform:rotate(360deg); } }
+    @keyframes popIn         { from { transform:scale(0.5); opacity:0; } to { transform:scale(1); opacity:1; } }
+    @keyframes pulse {
+      0%,100% { opacity:1; transform:scale(1); }
+      50%      { opacity:0.4; transform:scale(0.7); }
+    }
+
+    @media (max-width: 1100px) {
+      .page { grid-template-columns: 1fr; justify-items: center; overflow-y: auto; height: 100vh; padding: 2rem 1rem; }
+      .left-panel, .right-panel { display: none; }
+      .card { grid-column: 1; width: 100%; max-width: 440px; }
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="bg-canvas"></canvas>
+
+<div class="page">
+
+  <!-- LEFT PANEL -->
+  <div class="left-panel">
+    <div class="logo">
+      <div class="logo-icon">📊</div>
+      <div class="logo-text">Forex<span>AI</span></div>
+    </div>
+
+    <div>
+      <div class="brand-headline">
+        Trade smarter<br>with <span class="accent">AI-powered</span><br>forecasts
+      </div>
+    </div>
+
+    <div class="brand-sub">
+      Real-time predictions for EURUSD, GBPUSD,<br>
+      USDJPY and more — connected directly to MT5.
+    </div>
+
+    <div class="ticker-strip" id="ticker-strip">
+      <!-- injected by JS -->
+    </div>
+  </div>
+
+  <!-- LOGIN CARD -->
+  <div class="card">
+    <div class="success-overlay" id="success-overlay">
+      <div class="success-icon">✓</div>
+      <div class="success-text">Authenticated!</div>
+      <div class="success-sub">Redirecting to dashboard…</div>
+    </div>
+
+    <div class="card-tag">Secure Access</div>
+    <div class="card-title">Welcome back</div>
+    <div class="card-subtitle">Sign in to your ForexAI dashboard</div>
+
+    <!-- GOOGLE SIGN IN -->
+    <button class="btn-google" id="btn-google" onclick="handleGoogleSignIn()">
+      <div class="spinner"></div>
+      <svg class="google-icon" width="20" height="20" viewBox="0 0 24 24">
+        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
+        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+      </svg>
+      Continue with Google
+    </button>
+
+    <div class="divider">or sign in with email</div>
+
+    <!-- EMAIL / PASSWORD FORM -->
+    <form id="login-form" onsubmit="handleEmailSignIn(event)" novalidate>
+      <div class="field-group">
+        <div class="field">
+          <label for="email">Email address</label>
+          <div class="field-wrap">
+            <input type="email" id="email" placeholder="you@example.com" autocomplete="email" />
+            <span class="field-icon">✉</span>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="password">Password</label>
+          <div class="field-wrap">
+            <input type="password" id="password" placeholder="••••••••" autocomplete="current-password" />
+            <span class="field-icon">🔒</span>
+            <button type="button" class="field-toggle" id="pw-toggle" onclick="togglePassword()" title="Show/hide password">👁</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-meta">
+        <label class="remember">
+          <input type="checkbox" id="remember" />
+          Remember me
+        </label>
+        <a href="#" class="forgot">Forgot password?</a>
+      </div>
+
+      <button type="submit" class="btn-submit">Sign In</button>
+
+      <div class="error-msg" id="error-msg"></div>
+    </form>
+
+    <div class="signup-row">
+      Don't have an account? <a href="#">Create one free</a>
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="right-panel">
+    <div class="stat-card">
+      <div class="stat-label">Model Accuracy (1H)</div>
+      <div class="stat-value neutral">94.7%</div>
+      <div class="stat-sub">MAE: 0.00023 pips</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Active Signals Today</div>
+      <div class="stat-value up">+12</div>
+      <div class="stat-sub">8 BUY · 4 SELL</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">EURUSD 1H Forecast</div>
+      <div class="stat-value up">▲ 1.0847</div>
+      <div class="stat-sub">Confidence 78.3%</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Connected Accounts</div>
+      <div class="stat-value neutral">MT5</div>
+      <div class="stat-sub">MetaQuotes Demo</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Win Rate (30 days)</div>
+      <div class="stat-value up">67.2%</div>
+      <div class="stat-sub">Based on 1H signals</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  /* ── ANIMATED CANDLESTICK BACKGROUND ── */
+  (function () {
+    const canvas = document.getElementById('bg-canvas');
+    const ctx    = canvas.getContext('2d');
+    let W, H, candles = [];
+
+    function resize() {
+      W = canvas.width  = window.innerWidth;
+      H = canvas.height = window.innerHeight;
+    }
+
+    function randomCandle(x) {
+      const body   = 20 + Math.random() * 60;
+      const top    = Math.random() * H * 0.6 + H * 0.1;
+      const isUp   = Math.random() > 0.5;
+      const wick   = 10 + Math.random() * 30;
+      return {
+        x,
+        y: top,
+        body,
+        wick,
+        isUp,
+        alpha: 0,
+        speed: 0.3 + Math.random() * 0.4,
+        rising: true,
+      };
+    }
+
+    function init() {
+      candles = [];
+      const count = Math.floor(W / 22);
+      for (let i = 0; i < count; i++) {
+        candles.push(randomCandle(i * 22 + 11));
+      }
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, W, H);
+
+      candles.forEach(c => {
+        if (c.rising) {
+          c.alpha += 0.004 * c.speed;
+          if (c.alpha >= 0.18) { c.rising = false; }
+        } else {
+          c.alpha -= 0.002 * c.speed;
+          if (c.alpha <= 0) {
+            Object.assign(c, randomCandle(c.x));
+          }
+        }
+
+        const color = c.isUp ? '38,166,154' : '239,83,80';
+        ctx.strokeStyle = `rgba(${color},${c.alpha})`;
+        ctx.fillStyle   = `rgba(${color},${c.alpha * 0.4})`;
+        ctx.lineWidth   = 1;
+
+        ctx.beginPath();
+        ctx.moveTo(c.x, c.y - c.wick);
+        ctx.lineTo(c.x, c.y + c.body + c.wick);
+        ctx.stroke();
+
+        ctx.fillRect(c.x - 5, c.y, 10, c.body);
+        ctx.strokeRect(c.x - 5, c.y, 10, c.body);
+      });
+
+      requestAnimationFrame(draw);
+    }
+
+    window.addEventListener('resize', () => { resize(); init(); });
+    resize();
+    init();
+    draw();
+  })();
+
+
+  /* ── LIVE TICKER SIMULATION ── */
+  const TICKERS = [
+    { pair: 'EURUSD', price: 1.08432, change: +0.0012 },
+    { pair: 'GBPUSD', price: 1.26741, change: -0.0034 },
+    { pair: 'USDJPY', price: 153.847, change: +0.241  },
+    { pair: 'AUDUSD', price: 0.64821, change: -0.0008 },
+  ];
+
+  function renderTickers() {
+    const strip = document.getElementById('ticker-strip');
+    strip.innerHTML = TICKERS.map(t => {
+      const dir  = t.change >= 0;
+      const sign = dir ? '+' : '';
+      const dec  = t.pair.includes('JPY') ? 3 : 5;
+      return `
+        <div class="ticker-row">
+          <span class="ticker-dot ${dir ? 'up' : 'down'}"></span>
+          <span class="ticker-pair">${t.pair}</span>
+          <span class="ticker-price">${t.price.toFixed(dec)}</span>
+          <span class="ticker-change ${dir ? 'up' : 'down'}">${sign}${t.change.toFixed(dec)}</span>
+        </div>`;
+    }).join('');
+  }
+
+  function updateTickers() {
+    TICKERS.forEach(t => {
+      const move  = (Math.random() - 0.5) * 0.0003;
+      t.price    += move;
+      t.change   += move;
+    });
+    renderTickers();
+  }
+
+  renderTickers();
+  setInterval(updateTickers, 2000);
+
+
+  /* ── PASSWORD TOGGLE ── */
+  function togglePassword() {
+    const pw  = document.getElementById('password');
+    const btn = document.getElementById('pw-toggle');
+    if (pw.type === 'password') {
+      pw.type  = 'text';
+      btn.textContent = '🙈';
+    } else {
+      pw.type  = 'password';
+      btn.textContent = '👁';
+    }
+  }
+
+
+  /* ── GOOGLE SIGN IN ── */
+  function handleGoogleSignIn() {
+    const btn = document.getElementById('btn-google');
+    btn.classList.add('loading');
+
+    // Demo flow: simulates a 2-second auth, then shows success + redirects.
+    // To wire up real Google OAuth, replace this whole function body with
+    // a redirect to your backend's OAuth route, e.g.:
+    //   window.location.href = '/auth/google/login';
+    setTimeout(() => {
+      btn.classList.remove('loading');
+      showSuccess();
+    }, 2000);
+  }
+
+
+  /* ── EMAIL SIGN IN ── */
+  function handleEmailSignIn(e) {
+    e.preventDefault();
+    const email    = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const errorEl  = document.getElementById('error-msg');
+
+    errorEl.classList.remove('show');
+
+    if (!email || !email.includes('@')) {
+      showError('Please enter a valid email address.');
+      return;
+    }
+    if (password.length < 6) {
+      showError('Password must be at least 6 characters.');
+      return;
+    }
+
+    const btn = document.querySelector('.btn-submit');
+    btn.textContent = 'Signing in…';
+    btn.disabled = true;
+
+    // Demo flow: accepts any well-formed email/password.
+    // To wire up real auth, replace this setTimeout with a fetch() call
+    // to your backend, and only call showSuccess() on a real success response.
+    setTimeout(() => {
+      btn.textContent = 'Sign In';
+      btn.disabled = false;
+      showSuccess();
+    }, 1800);
+  }
+
+
+  /* ── HELPERS ── */
+  function showError(msg) {
+    const el = document.getElementById('error-msg');
+    el.textContent = '⚠ ' + msg;
+    el.classList.add('show');
+  }
+
+  function showSuccess() {
+    document.getElementById('success-overlay').classList.add('show');
+    setTimeout(() => {
+      // Redirect the WHOLE top-level page (breaks out of the Streamlit iframe)
+      // so app.py can detect ?logged_in=true and unlock the dashboard.
+      // NOTE: we only WRITE to location.href (allowed cross-origin) and never
+      // READ properties like .pathname off window.top.location (blocked cross-origin).
+      try {
+        window.top.location.href = "http://localhost:8501/?logged_in=true";
+      } catch (err) {
+        // Fallback: redirect just this frame if breaking out of the parent is blocked entirely
+        window.location.href = "http://localhost:8501/?logged_in=true";
+      }
+    }, 1500);
+  }
+</script>
+
+</body>
+</html>
