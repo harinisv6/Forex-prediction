@@ -5,7 +5,6 @@ import ta
 import joblib
 import os
 import numpy as np
-import streamlit.components.v1 as components
 
 from datetime import datetime, timedelta
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
@@ -14,7 +13,6 @@ from streamlit_autorefresh import st_autorefresh
 # Safely import MetaTrader5 (Windows only; mocked or disabled on Linux cloud)
 try:
     import MetaTrader5 as mt5
-
     MT5_AVAILABLE = True
 except ImportError:
     MT5_AVAILABLE = False
@@ -29,41 +27,14 @@ st.set_page_config(
 )
 
 # ====================================
-# LOGIN GATE
-# ====================================
-if "logged_in" not in st.session_state:
-    st.session_state.logged_in = False
-
-if st.query_params.get("logged_in") == "true":
-    st.session_state.logged_in = True
-
-if not st.session_state.logged_in:
-    st.markdown("""
-        <style>
-        #MainMenu {visibility:hidden;}
-        header {visibility:hidden;}
-        footer {visibility:hidden;}
-        section[data-testid="stSidebar"]{display:none;}
-        .block-container{padding:0rem; max-width:100%;}
-        iframe{width:100% !important;}
-        </style>
-    """, unsafe_allow_html=True)
-
-    with open("templates/login.html", encoding="utf-8") as f:
-        html = f.read()
-
-    components.html(html, height=1000, scrolling=False)
-    st.stop()
-
-# ====================================
 # SETTINGS
 # ====================================
-PAIRS = ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD"]
-LOG_FILE = "prediction_log.csv"
-MODEL_DIR = "models"
+PAIRS        = ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD"]
+LOG_FILE     = "prediction_log.csv"
+MODEL_DIR    = "models"
 
-pair = st.sidebar.selectbox("Currency Pair", PAIRS)
-refresh = st.sidebar.slider("Refresh every (sec)", 5, 60, 10)
+pair         = st.sidebar.selectbox("Currency Pair", PAIRS)
+refresh      = st.sidebar.slider("Refresh every (sec)", 5, 60, 10)
 candle_count = st.sidebar.slider("Candles to display", 50, 300, 100)
 
 st_autorefresh(interval=refresh * 1000, key="autorefresh")
@@ -93,9 +64,9 @@ if not connected:
 # ====================================
 @st.cache_resource
 def load_models():
-    clf = joblib.load(os.path.join(MODEL_DIR, "xgb_classifier.pkl"))
-    reg_1h = joblib.load(os.path.join(MODEL_DIR, "xgb_1h.pkl"))
-    reg_1d = joblib.load(os.path.join(MODEL_DIR, "xgb_1d.pkl"))
+    clf      = joblib.load(os.path.join(MODEL_DIR, "xgb_classifier.pkl"))
+    reg_1h   = joblib.load(os.path.join(MODEL_DIR, "xgb_1h.pkl"))
+    reg_1d   = joblib.load(os.path.join(MODEL_DIR, "xgb_1d.pkl"))
     features = joblib.load(os.path.join(MODEL_DIR, "features.pkl"))
     return clf, reg_1h, reg_1d, features
 
@@ -117,10 +88,10 @@ def get_data(pair: str, count: int) -> pd.DataFrame:
         rates = mt5.copy_rates_from_pos(pair, mt5.TIMEFRAME_H1, 0, count)
         if rates is not None and len(rates) > 0:
             df = pd.DataFrame(rates)
-            df["time"] = pd.to_datetime(df["time"], unit="s")
+            df["time"]   = pd.to_datetime(df["time"], unit="s")
             df["volume"] = df["tick_volume"] if "tick_volume" in df.columns else 0
             return df.reset_index(drop=True)
-
+    
     # Fallback dummy data generator for cloud testing if MT5 is unreachable
     now = datetime.now()
     times = [now - timedelta(hours=i) for i in range(count)]
@@ -145,31 +116,31 @@ def get_data(pair: str, count: int) -> pd.DataFrame:
 def create_features(df: pd.DataFrame, current_pair: str) -> pd.DataFrame:
     df = df.copy()
 
-    df["open_lag1"] = df["open"].shift(1)
-    df["high_lag1"] = df["high"].shift(1)
-    df["low_lag1"] = df["low"].shift(1)
+    df["open_lag1"]  = df["open"].shift(1)
+    df["high_lag1"]  = df["high"].shift(1)
+    df["low_lag1"]   = df["low"].shift(1)
     df["close_lag1"] = df["close"].shift(1)
     df["close_lag2"] = df["close"].shift(2)
 
-    df["returns"] = df["close"].pct_change(fill_method=None)
-    df["mom3"] = df["close"].pct_change(3, fill_method=None)
-    df["mom5"] = df["close"].pct_change(5, fill_method=None)
-    df["mom10"] = df["close"].pct_change(10, fill_method=None)
+    df["returns"]    = df["close"].pct_change(fill_method=None)
+    df["mom3"]       = df["close"].pct_change(3,  fill_method=None)
+    df["mom5"]       = df["close"].pct_change(5,  fill_method=None)
+    df["mom10"]      = df["close"].pct_change(10, fill_method=None)
 
-    df["rsi"] = ta.momentum.RSIIndicator(df["close"]).rsi()
+    df["rsi"]  = ta.momentum.RSIIndicator(df["close"]).rsi()
     df["macd"] = ta.trend.MACD(df["close"]).macd()
-    df["atr"] = ta.volatility.AverageTrueRange(
-        df["high"], df["low"], df["close"]
-    ).average_true_range()
+    df["atr"]  = ta.volatility.AverageTrueRange(
+                     df["high"], df["low"], df["close"]
+                 ).average_true_range()
 
     bb = ta.volatility.BollingerBands(df["close"])
-    df["bb_width"] = bb.bollinger_hband() - bb.bollinger_lband()
-    df["ma5"] = df["close"].rolling(5).mean()
-    df["ma10"] = df["close"].rolling(10).mean()
+    df["bb_width"]   = bb.bollinger_hband() - bb.bollinger_lband()
+    df["ma5"]        = df["close"].rolling(5).mean()
+    df["ma10"]       = df["close"].rolling(10).mean()
     df["volatility"] = df["returns"].rolling(5).std()
 
     df["hour"] = df["time"].dt.hour
-    df["day"] = df["time"].dt.dayofweek
+    df["day"]  = df["time"].dt.dayofweek
 
     for p in PAIRS:
         df[f"pair_{p}"] = 1 if p == current_pair else 0
@@ -191,14 +162,14 @@ def align_features(df: pd.DataFrame) -> pd.DataFrame:
 # PREDICT
 # ====================================
 def predict(raw: pd.DataFrame, feat_df: pd.DataFrame):
-    X = align_features(feat_df.copy())
+    X   = align_features(feat_df.copy())
     row = X.iloc[[-1]]
 
-    prob = float(clf.predict_proba(row)[0][1])
+    prob   = float(clf.predict_proba(row)[0][1])
     ret_1h = float(reg_1h.predict(row)[0])
     ret_1d = float(reg_1d.predict(row)[0])
 
-    current = float(raw["close"].iloc[-1])
+    current  = float(raw["close"].iloc[-1])
     now_time = datetime.now()
 
     p1h = current * (1 + ret_1h)
@@ -212,14 +183,14 @@ def predict(raw: pd.DataFrame, feat_df: pd.DataFrame):
 # ====================================
 def log_prediction(pair, current, p1h, p1d, prob, now_time):
     entry = {
-        "timestamp": now_time.strftime("%Y-%m-%dT%H:%M:%S"),
-        "pair": pair,
-        "current": round(current, 5),
-        "pred_1h": round(p1h, 5),
-        "pred_1d": round(p1d, 5),
-        "target_1h": (now_time + timedelta(hours=1)).strftime("%Y-%m-%d %H:%M"),
-        "target_1d": (now_time + timedelta(hours=24)).strftime("%Y-%m-%d %H:%M"),
-        "prob": round(prob, 4),
+        "timestamp":  now_time.strftime("%Y-%m-%dT%H:%M:%S"),
+        "pair":       pair,
+        "current":    round(current, 5),
+        "pred_1h":    round(p1h, 5),
+        "pred_1d":    round(p1d, 5),
+        "target_1h":  (now_time + timedelta(hours=1) ).strftime("%Y-%m-%d %H:%M"),
+        "target_1d":  (now_time + timedelta(hours=24)).strftime("%Y-%m-%d %H:%M"),
+        "prob":       round(prob, 4),
     }
     df_new = pd.DataFrame([entry])
     if os.path.exists(LOG_FILE):
@@ -244,7 +215,7 @@ def compute_metrics():
     df_log["timestamp"] = pd.to_datetime(df_log["timestamp"], format="ISO8601")
     df_log = df_log.sort_values("timestamp").reset_index(drop=True)
 
-    now = datetime.now()
+    now     = datetime.now()
     results = {}
 
     df_1h = df_log[df_log["timestamp"] < now - timedelta(hours=1)].copy()
@@ -256,12 +227,12 @@ def compute_metrics():
             y_pred = df_1h["pred_1h"].values
             if len(y_true) > 0 and len(y_true) == len(y_pred):
                 results["1H"] = {
-                    "MAE": round(mean_absolute_error(y_true, y_pred), 6),
+                    "MAE":  round(mean_absolute_error(y_true, y_pred), 6),
                     "RMSE": round(float(np.sqrt(mean_squared_error(y_true, y_pred))), 6),
-                    "R2": round(float(r2_score(y_true, y_pred)), 4),
+                    "R2":   round(float(r2_score(y_true, y_pred)), 4),
                     "MAPE": round(float(np.mean(np.abs((y_true - y_pred) / y_true))) * 100, 4),
-                    "n": len(df_1h),
-                    "df": df_1h,
+                    "n":    len(df_1h),
+                    "df":   df_1h,
                 }
 
     df_1d = df_log[df_log["timestamp"] < now - timedelta(hours=24)].copy()
@@ -273,12 +244,12 @@ def compute_metrics():
             y_pred = df_1d["pred_1d"].values
             if len(y_true) > 0 and len(y_true) == len(y_pred):
                 results["1D"] = {
-                    "MAE": round(mean_absolute_error(y_true, y_pred), 6),
+                    "MAE":  round(mean_absolute_error(y_true, y_pred), 6),
                     "RMSE": round(float(np.sqrt(mean_squared_error(y_true, y_pred))), 6),
-                    "R2": round(float(r2_score(y_true, y_pred)), 4),
+                    "R2":   round(float(r2_score(y_true, y_pred)), 4),
                     "MAPE": round(float(np.mean(np.abs((y_true - y_pred) / y_true))) * 100, 4),
-                    "n": len(df_1d),
-                    "df": df_1d,
+                    "n":    len(df_1d),
+                    "df":   df_1d,
                 }
 
     return results if results else None
@@ -288,10 +259,10 @@ def compute_metrics():
 # CHART BUILDER
 # ====================================
 def build_forecast_chart(
-        raw, feat_df, current, forecast_price,
-        horizon_label, target_time, now_time,
-        line_color, atr_val, signal, sig_color, sig_symbol,
-        chart_height=520,
+    raw, feat_df, current, forecast_price,
+    horizon_label, target_time, now_time,
+    line_color, atr_val, signal, sig_color, sig_symbol,
+    chart_height=520,
 ):
     fig = go.Figure()
 
@@ -321,7 +292,7 @@ def build_forecast_chart(
     band_scale = 1.0 if "1H" in horizon_label else 2.0
     fig.add_trace(go.Scatter(
         x=[now_time, target_time],
-        y=[current, forecast_price],
+        y=[current,  forecast_price],
         mode="lines+markers+text",
         name=f"{horizon_label} Forecast",
         line=dict(color=line_color, width=2.5, dash="dot"),
@@ -367,19 +338,19 @@ def build_forecast_chart(
 # ====================================
 # RUN PIPELINE
 # ====================================
-raw = get_data(pair, candle_count)
+raw     = get_data(pair, candle_count)
 feat_df = create_features(raw, pair)
 current, p1h, p1d, prob, now_time = predict(raw, feat_df)
 log_prediction(pair, current, p1h, p1d, prob, now_time)
 
-t1h = now_time + timedelta(hours=1)
-t1d = now_time + timedelta(hours=24)
+t1h     = now_time + timedelta(hours=1)
+t1d     = now_time + timedelta(hours=24)
 atr_val = float(feat_df["atr"].iloc[-1]) if "atr" in feat_df.columns else current * 0.001
 
 if prob > 0.65:
-    signal, sig_color, sig_symbol = "BUY 📈", "#26a69a", "▲"
+    signal, sig_color, sig_symbol = "BUY 📈",      "#26a69a", "▲"
 elif prob < 0.35:
-    signal, sig_color, sig_symbol = "SELL 📉", "#ef5350", "▼"
+    signal, sig_color, sig_symbol = "SELL 📉",     "#ef5350", "▼"
 else:
     signal, sig_color, sig_symbol = "NO TRADE ⚖️", "#9E9E9E", "■"
 
@@ -406,16 +377,14 @@ st.divider()
 
 # 1H Forecast Chart
 st.subheader(f"🕐 1-Hour Forecast — Target: {t1h.strftime('%d %b %Y  %H:%M')}")
-fig_1h = build_forecast_chart(raw, feat_df, current, p1h, "1H", t1h, now_time, "#00E5FF", atr_val, signal, sig_color,
-                              sig_symbol)
+fig_1h = build_forecast_chart(raw, feat_df, current, p1h, "1H", t1h, now_time, "#00E5FF", atr_val, signal, sig_color, sig_symbol)
 st.plotly_chart(fig_1h, use_container_width=True)
 
 st.divider()
 
-# 1D Forecast Chart (Restored!)
+# 1D Forecast Chart
 st.subheader(f"📅 1-Day Forecast — Target: {t1d.strftime('%d %b %Y  %H:%M')}")
-fig_1d = build_forecast_chart(raw, feat_df, current, p1d, "1D", t1d, now_time, "#FFD600", atr_val, signal, sig_color,
-                              sig_symbol)
+fig_1d = build_forecast_chart(raw, feat_df, current, p1d, "1D", t1d, now_time, "#FFD600", atr_val, signal, sig_color, sig_symbol)
 st.plotly_chart(fig_1d, use_container_width=True)
 
 st.divider()
@@ -424,14 +393,12 @@ st.divider()
 st.subheader("📉 RSI (14)")
 fig_rsi = go.Figure()
 fig_rsi.add_trace(go.Scatter(x=raw["time"], y=feat_df["rsi"], mode="lines", line=dict(color="#42A5F5", width=1.5)))
-fig_rsi.update_layout(template="plotly_dark", height=180, margin=dict(l=10, r=120, t=10, b=10), plot_bgcolor="#131722",
-                      paper_bgcolor="#131722")
+fig_rsi.update_layout(template="plotly_dark", height=180, margin=dict(l=10, r=120, t=10, b=10), plot_bgcolor="#131722", paper_bgcolor="#131722")
 st.plotly_chart(fig_rsi, use_container_width=True)
 
 # MACD Chart
 st.subheader("📊 MACD")
 fig_macd = go.Figure()
 fig_macd.add_trace(go.Scatter(x=raw["time"], y=feat_df["macd"], mode="lines", line=dict(color="#CE93D8", width=1.5)))
-fig_macd.update_layout(template="plotly_dark", height=160, margin=dict(l=10, r=120, t=10, b=10), plot_bgcolor="#131722",
-                       paper_bgcolor="#131722")
+fig_macd.update_layout(template="plotly_dark", height=160, margin=dict(l=10, r=120, t=10, b=10), plot_bgcolor="#131722", paper_bgcolor="#131722")
 st.plotly_chart(fig_macd, use_container_width=True)
